@@ -61,7 +61,7 @@ class HttpRemoteUserMiddleware(PersistentRemoteUserMiddleware):
         # If remote user auth is enabled only for the frontend, not the API,
         # then we need dont want to authenticate the user for API requests.
         if (
-            "/api/" in request.path
+            ("/api/" in request.path or request.path_info == "/mcp/")
             and "paperless.auth.PaperlessRemoteUserAuthentication"
             not in settings.REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"]
         ):

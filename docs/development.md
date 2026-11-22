@@ -24,6 +24,27 @@ Apart from that, the folder structure is as follows:
   development.
 - `docker/` - Files required to build the docker image.
 
+## Updating this fork's MCP integration
+
+This fork's `dev` includes a merge of the upstream `feature/mcp` branch.
+For a fresh clone, register the official repository once with
+`git remote add upstream https://github.com/paperless-ngx/paperless-ngx.git`.
+To bring subsequent upstream changes into the fork, start with a clean checkout:
+
+```sh
+git switch dev
+git pull --ff-only origin dev
+git fetch upstream
+git merge upstream/dev
+uv sync --locked --group testing
+uv run --locked pytest src/paperless/tests/test_mcp.py
+```
+
+If a merge changes dependency requirements, resolve `pyproject.toml` and run
+`uv lock` before syncing. Review the merge and push it with `git push origin dev`.
+Updates to the maintainer's experimental tools can be merged separately with
+`git merge upstream/feature/mcp` and the same checks.
+
 ## Contributing to Paperless-ngx
 
 Maybe you've been using Paperless-ngx for a while and want to add a feature

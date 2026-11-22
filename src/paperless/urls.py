@@ -14,6 +14,8 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.generic import RedirectView
 from drf_spectacular.views import SpectacularAPIView
 from drf_spectacular.views import SpectacularSwaggerView
+from mcp_server.views import MCPServerStreamableHttpView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.routers import DefaultRouter
 
 from documents.views import BulkDownloadView
@@ -54,6 +56,7 @@ from documents.views import WorkflowTriggerViewSet
 from documents.views import WorkflowViewSet
 from documents.views import serve_logo
 from paperless.consumers import StatusConsumer
+from paperless.mcp import register_api_tools
 from paperless.views import ApplicationConfigurationViewSet
 from paperless.views import DisconnectSocialAccountView
 from paperless.views import FaviconView
@@ -93,6 +96,7 @@ api_router.register(r"custom_fields", CustomFieldViewSet)
 api_router.register(r"config", ApplicationConfigurationViewSet)
 api_router.register(r"processed_mail", ProcessedMailViewSet)
 
+register_api_tools(api_router)
 
 urlpatterns = [
     re_path(
@@ -416,6 +420,15 @@ urlpatterns = [
                 ),
             ],
         ),
+    ),
+    path(
+        "mcp/",
+        MCPServerStreamableHttpView.as_view(
+            permission_classes=[IsAuthenticated],
+            http_method_names=["post", "options"],
+            schema=None,
+        ),
+        name="mcp",
     ),
     # Root of the Frontend
     re_path(

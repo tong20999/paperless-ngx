@@ -60,6 +60,24 @@ The REST api provides five different forms of authentication.
     [here](advanced_usage.md#openid-connect-and-social-authentication) for more
     information on social accounts.
 
+## Model Context Protocol (MCP)
+
+This fork serves MCP at `/mcp/` on the same host and base path as Paperless.
+Choose **Streamable HTTP** in your MCP client and enter the full URL, for
+example `https://paperless.example.com/mcp/`. Configure the client to send
+`Authorization: Token <token>` on each request. You can generate the token
+under **My Profile**. For a search-only client, use an account with view
+permission on the documents you want it to read.
+
+- `search_documents` accepts a full-text query such as `{"query": "invoice"}`,
+  or a `more_like_id` for finding similar documents.
+- `query_data_collections` accepts a collection and the same filters as its REST
+  endpoint. For example, `{"collection":"documents","filters":{"ordering":"-created","page_size":5}}`
+  returns the five newest documents visible to the caller. For document notes,
+  use `{"collection":"note","filters":{"document":123}}`.
+- List, create, update, and delete tools follow the actions offered by each
+  published API resource and enforce the calling account's permissions.
+
 ## Searching for documents
 
 Full text searching is available on the `/api/documents/` endpoint. The
