@@ -1,0 +1,22 @@
+services:
+  webserver:
+    environment:
+      USERMAP_UID: "${USERMAP_UID:-1000}"
+      USERMAP_GID: "${USERMAP_GID:-1000}"
+      PAPERLESS_CONSUMER_POLLING_INTERVAL: "10"
+    volumes:
+      - type: bind
+        source: ${PAPERLESS_NAS_ROOT:?Set PAPERLESS_NAS_ROOT to the mounted TrueNAS Paperless directory}/media
+        target: /usr/src/paperless/media
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${PAPERLESS_NAS_ROOT:?Set PAPERLESS_NAS_ROOT to the mounted TrueNAS Paperless directory}/consume
+        target: /usr/src/paperless/consume
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${PAPERLESS_NAS_ROOT:?Set PAPERLESS_NAS_ROOT to the mounted TrueNAS Paperless directory}/export
+        target: /usr/src/paperless/export
+        bind:
+          create_host_path: false

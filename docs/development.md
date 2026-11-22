@@ -88,6 +88,77 @@ directories `consume/` and `export/` are available for file import and export.
 Use `docker compose down` to stop the stack while retaining volumes. To inspect
 startup, run `docker compose logs --tail=100 webserver`.
 
+#### Storing documents on a TrueNAS SMB share
+
+Use [`compose.truenas.yaml`](../compose.truenas.yaml) on the Linux machine
+running Docker. It puts document originals, archived copies, thumbnails,
+incoming files, and exports on TrueNAS. PostgreSQL, Valkey, and the Paperless
+search index use local Docker volumes. The override polls the share every
+10 seconds so files added over SMB are picked up.
+
+1. Mount the share on the Docker host. If your existing mount script already
+   mounts it at `/mnt/y`, reuse that mount and check its permissions. For a
+   manual mount with `cifs-utils` installed, run the following. The mount
+   command prompts for the SMB password.
+
+    ```sh
+    sudo mkdir -p /mnt/y
+    sudo mount -t cifs //192.168.1.52/development /mnt/y \
+      -o "username=dev,vers=3.0,uid=$(id -u warsong),gid=$(id -g warsong),forceuid,forcegid,file_mode=0660,dir_mode=0770"
+    ```
+
+2. Confirm that `findmnt` reports the expected share, then create dedicated
+   directories as the user who owns the mount (here, `warsong`). Give the SMB
+   account write access to those directories on TrueNAS. Restrict share access
+   to people who should be able to read the stored documents.
+
+    ```sh
+    findmnt --mountpoint /mnt/y --types cifs &&
+      mkdir -p /mnt/y/paperless/media /mnt/y/paperless/consume /mnt/y/paperless/export
+    ```
+
+    Set `PAPERLESS_NAS_ROOT=/mnt/y/paperless` in the checkout's `.env`. If the
+    mount uses IDs other than `1000:1000`, set `USERMAP_UID` and `USERMAP_GID`
+    to match the numeric IDs shown by `id warsong`.
+
+3. For an existing deployment, use the same checkout, `.env`, and Compose
+   project name so Paperless opens its existing database. Back up the stack
+   first. From the checkout, run the following in Bash as `warsong` (with
+   Docker access), using an empty destination `media` directory. It stops
+   Paperless and copies the local media volume before the mount changes.
+
+    ```bash
+    (
+      set -e -o pipefail
+      findmnt --mountpoint /mnt/y --types cifs
+      existing_media=$(ls -A /mnt/y/paperless/media)
+      test -z "$existing_media" || { echo "NAS media directory must be empty" >&2; exit 1; }
+      docker compose -f compose.yaml stop webserver
+      docker compose -f compose.yaml run --rm -T --no-deps --entrypoint tar \
+        webserver -C /usr/src/paperless/media -cf - . |
+        tar --no-same-owner --no-same-permissions -xf - -C /mnt/y/paperless/media
+    )
+    ```
+
+    Copy any pending files from the old `consume/` and any exports you want
+    from the old `export/` to their NAS counterparts while Paperless is stopped.
+    If the copy fails, resolve the error and use an empty NAS media directory
+    for the retry. Keep the old media volume until you verify the migration.
+
+4. Start the stack with both files after confirming the share is mounted.
+
+    ```sh
+    findmnt --mountpoint /mnt/y --types cifs &&
+      docker compose -f compose.yaml -f compose.truenas.yaml up -d --build --wait
+    ```
+
+    For an existing deployment, open a previously stored document and import
+    a test file from the NAS `consume` directory. Use both Compose files on
+    future deployments. Configure the host to mount the share before Docker
+    restores the stack after a reboot. Keep the `paperless` subdirectories
+    only on the share so Docker refuses to start the webserver if the bind
+    sources are missing.
+
 ## Contributing to Paperless-ngx
 
 Maybe you've been using Paperless-ngx for a while and want to add a feature
