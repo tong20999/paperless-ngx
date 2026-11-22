@@ -3,7 +3,7 @@
 This section describes the steps you need to take to start development
 on Paperless-ngx.
 
-Check out the source from GitHub. The repository is organized in the
+Check out the source from GitHub. The upstream repository is organized in the
 following way:
 
 - `main` always represents the latest release and will only see
@@ -12,8 +12,7 @@ following way:
 - `feature-X` contains bigger changes that will be in some release, but
   not necessarily the next one.
 
-When making functional changes to Paperless-ngx, _always_ make your changes
-on the `dev` branch.
+Base upstream contributions on `dev`. For changes to this fork, branch from `develop`.
 
 Apart from that, the folder structure is as follows:
 
@@ -23,6 +22,48 @@ Apart from that, the folder structure is as follows:
 - `scripts/` - Various scripts that help with different parts of
   development.
 - `docker/` - Files required to build the docker image.
+
+## Updating this fork's MCP integration
+
+The fork's `dev` mirrors the official `dev`. The fork's `develop` combines that
+code with MCP and is the base for new feature branches. On a fresh clone,
+register the official repository once with
+`git remote add upstream https://github.com/paperless-ngx/paperless-ngx.git`.
+To bring subsequent upstream changes into the fork, start with a clean checkout:
+
+```sh
+git switch dev
+git pull --ff-only origin dev
+git fetch upstream
+git merge --ff-only upstream/dev
+git push origin dev
+git switch develop
+git pull --ff-only origin develop
+git merge dev
+uv sync --locked --group testing
+uv run --locked pytest src/paperless/tests/test_mcp.py
+```
+
+If a merge changes dependency requirements, resolve `pyproject.toml` and run
+`uv lock` before syncing. After testing, push the merge with `git push origin develop`.
+For further MCP work, update the fork's `feature/mcp` branch from `develop`,
+adapt the tools to current REST behavior, then test and merge back into `develop`.
+
+### Deploying fork release 1.0.0
+
+The `release/1.0.0` branch identifies this fork's first deployment release.
+To build its Docker image on the server, run these commands in a clone of the fork:
+
+```sh
+git fetch origin
+git switch release/1.0.0
+git pull --ff-only origin release/1.0.0
+docker build -t paperless-mcp:1.0.0 .
+```
+
+Set the Paperless `webserver` service's Compose image to `paperless-mcp:1.0.0`
+and run `docker compose up -d --no-deps webserver` from the deployment directory.
+Fork release numbers are independent of the upstream Paperless application version.
 
 ## Contributing to Paperless-ngx
 

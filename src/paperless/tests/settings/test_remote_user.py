@@ -159,3 +159,20 @@ class TestRemoteUser(DirectoriesMixin, APITestCase):
             header_name = _parse_remote_user_settings()
 
             self.assertEqual(header_name, "HTTP_FOO")
+
+    def test_mcp_requires_remote_user_api_setting(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {
+                "PAPERLESS_ENABLE_HTTP_REMOTE_USER": "True",
+                "PAPERLESS_ENABLE_HTTP_REMOTE_USER_API": "False",
+            },
+        ):
+            _parse_remote_user_settings()
+            response = self.client.post(
+                "/mcp/",
+                {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+                format="json",
+                headers={"Remote-User": self.user.username},
+            )
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

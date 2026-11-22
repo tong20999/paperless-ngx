@@ -35,6 +35,7 @@ dependencies = [
   "django-extensions~=4.1",
   "django-filter>=26.2,<27",
   "django-guardian>=3.5.2,<3.6",
+  "django-mcp-server~=0.5.7",
   "django-multiselectfield~=1.0.1",
   "django-rich~=2.2.0",
   "django-soft-delete~=1.0.18",
@@ -56,6 +57,8 @@ dependencies = [
   "llama-index-embeddings-openai-like>=0.2.2",
   "llama-index-llms-ollama>=0.9.1",
   "llama-index-llms-openai-like>=0.7.1",
+  # django-mcp-server 0.5 uses the v1 FastMCP server API.
+  "mcp>=1.26,<2",
   "ocrmypdf[heic]>=17.12,<17.13",
   "openai>=2.48",
   "pathvalidate~=3.3.1",
