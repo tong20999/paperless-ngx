@@ -51,19 +51,42 @@ adapt the tools to current REST behavior, then test and merge back into `develop
 
 ### Deploying fork release 1.0.0
 
-The `release/1.0.0` branch identifies this fork's first deployment release.
-To build its Docker image on the server, run these commands in a clone of the fork:
+For a fresh deployment, use a Linux server with Git, Docker Engine and the
+Docker Compose plugin. Clone the fork on the server:
 
 ```sh
-git fetch origin
-git switch release/1.0.0
-git pull --ff-only origin release/1.0.0
-docker build -t paperless-mcp:1.0.0 .
+git clone --branch release/1.0.0 https://github.com/tong20999/paperless-ngx.git
+cd paperless-ngx
+umask 077
+cp .env.example .env
+nano .env
 ```
 
-Set the Paperless `webserver` service's Compose image to `paperless-mcp:1.0.0`
-and run `docker compose up -d --no-deps webserver` from the deployment directory.
-Fork release numbers are independent of the upstream Paperless application version.
+Fill in the four values:
+
+| Setting | Value |
+| --- | --- |
+| `PAPERLESS_URL` | The URL you will open, such as `http://192.168.1.50:8000` on your LAN. Use your HTTPS URL if you already have a reverse proxy. |
+| `PAPERLESS_SECRET_KEY` | Generate once with `openssl rand -hex 48` and keep it across restarts. |
+| `PAPERLESS_DBPASS` | Generate a separate database password with `openssl rand -hex 32`. PostgreSQL uses it when initializing its volume. |
+| `PAPERLESS_ADMIN_PASSWORD` | Choose the initial password for the web account `admin`. Change an existing account's password in Paperless. |
+
+From the repository root, start the stack:
+
+```sh
+docker compose up -d --build --wait
+docker compose ps
+```
+
+Compose builds the MCP-enabled application from this checkout and starts
+PostgreSQL, Valkey, Tika and Gotenberg. Open `PAPERLESS_URL` and sign in as
+`admin`. MCP clients connect at `<PAPERLESS_URL>/mcp/` using Streamable HTTP
+and a Paperless API token. See the [MCP connection instructions](api.md#model-context-protocol-mcp).
+
+Docker volumes persist the database, documents and search data. The host
+directories `consume/` and `export/` are available for file import and export.
+Use `docker compose down` to stop the stack while retaining volumes. To inspect
+startup, run `docker compose logs --tail=100 webserver`.
 
 ## Contributing to Paperless-ngx
 

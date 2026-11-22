@@ -1,0 +1,80 @@
+name: paperless
+
+services:
+  db:
+    image: docker.io/library/postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: paperless
+      POSTGRES_USER: paperless
+      POSTGRES_PASSWORD: ${PAPERLESS_DBPASS:?Set PAPERLESS_DBPASS in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "paperless", "-d", "paperless"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  broker:
+    image: docker.io/valkey/valkey:9-alpine
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  gotenberg:
+    image: docker.io/gotenberg/gotenberg:8.38
+    restart: unless-stopped
+    command:
+      - gotenberg
+      - --chromium-disable-javascript=true
+      - --chromium-allow-list=^file:///tmp/.*
+
+  tika:
+    image: docker.io/apache/tika:3.3.1.0
+    restart: unless-stopped
+
+  webserver:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      broker:
+        condition: service_healthy
+      gotenberg:
+        condition: service_started
+      tika:
+        condition: service_started
+    ports:
+      - "${PAPERLESS_PORT:-8000}:8000"
+    environment:
+      PAPERLESS_URL: ${PAPERLESS_URL:?Set PAPERLESS_URL in .env}
+      PAPERLESS_SECRET_KEY: ${PAPERLESS_SECRET_KEY:?Set PAPERLESS_SECRET_KEY in .env}
+      PAPERLESS_ADMIN_USER: admin
+      PAPERLESS_ADMIN_PASSWORD: ${PAPERLESS_ADMIN_PASSWORD:?Set PAPERLESS_ADMIN_PASSWORD in .env}
+      PAPERLESS_DBENGINE: postgresql
+      PAPERLESS_DBHOST: db
+      PAPERLESS_DBNAME: paperless
+      PAPERLESS_DBUSER: paperless
+      PAPERLESS_DBPASS: ${PAPERLESS_DBPASS:?Set PAPERLESS_DBPASS in .env}
+      PAPERLESS_REDIS: redis://broker:6379
+      PAPERLESS_TIKA_ENABLED: "1"
+      PAPERLESS_TIKA_ENDPOINT: http://tika:9998
+      PAPERLESS_TIKA_GOTENBERG_ENDPOINT: http://gotenberg:3000
+    volumes:
+      - data:/usr/src/paperless/data
+      - media:/usr/src/paperless/media
+      - ./consume:/usr/src/paperless/consume
+      - ./export:/usr/src/paperless/export
+
+volumes:
+  pgdata:
+  redisdata:
+  data:
+  media:
